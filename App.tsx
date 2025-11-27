@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import JobCard from './components/JobCard';
 import IntakeForm from './components/IntakeForm';
-import { JobRecord, JobStatus } from './types';
+import { JobRecord, JobStatus, UserRole, User } from './types';
 import { Plus, Search, Filter } from 'lucide-react';
+import { MOCK_USERS } from './services/userService';
 
 const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]); // Default to Front Desk
   const [view, setView] = useState<'dashboard' | 'intake'>('dashboard');
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,26 +41,58 @@ const App: React.FC = () => {
     ));
   };
 
+  const handleAssignMechanic = (jobId: string, mechanicName: string) => {
+    setJobs(prevJobs => prevJobs.map(job => 
+        job.id === jobId ? { ...job, assignedMechanic: mechanicName } : job
+    ));
+  };
+
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = 
       job.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (job.customer.companyName && job.customer.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (job.customer.accountNumber && job.customer.accountNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
       job.machine.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === 'ALL' || job.status === filterStatus;
+    
+    // Role-based filtering
+    let matchesRole = true;
+    if (currentUser.role === UserRole.MECHANIC) {
+        // Mechanics primarily see jobs assigned to them, or jobs that are unassigned if they want to grab one (optional business logic)
+        // For this app, strict assignment view:
+        matchesRole = job.assignedMechanic === currentUser.name;
+    } 
+    // Managers and Front Desk see all jobs.
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesRole;
   });
 
   return (
-    <Layout>
+    <Layout currentUser={currentUser} onSwitchUser={setCurrentUser}>
       {view === 'dashboard' ? (
         <div className="space-y-6">
+          {/* Welcome Message */}
+          <div className="flex justify-between items-center">
+             <h2 className="text-lg font-bold text-gray-800">
+                {currentUser.role === UserRole.MECHANIC ? 'My Assigned Jobs' : 'Workshop Dashboard'}
+             </h2>
+             {currentUser.role === UserRole.FRONT_DESK && (
+                 <button
+                  onClick={() => setView('intake')}
+                  className="flex items-center justify-center px-4 py-2 bg-brand-600 text-white rounded-lg shadow-md hover:bg-brand-700 transition-colors font-medium text-sm"
+                 >
+                   <Plus size={16} className="mr-2" />
+                   New Booking
+                 </button>
+             )}
+          </div>
+
           {/* Action Bar */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto flex-grow sm:max-w-xl">
-               <div className="relative w-full sm:w-64">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+             <div className="flex flex-col sm:flex-row gap-2 w-full">
+               <div className="relative flex-grow">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Search size={16} className="text-gray-400" />
                   </div>
@@ -67,7 +101,7 @@ const App: React.FC = () => {
                     placeholder="Search jobs..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 block w-full rounded-lg border-gray-300 bg-white border shadow-sm focus:border-brand-500 focus:ring-brand-500 py-2 text-sm"
+                    className="pl-10 block w-full rounded-lg border-gray-300 bg-gray-50 border shadow-sm focus:border-brand-500 focus:ring-brand-500 py-2 text-sm"
                   />
                </div>
 
@@ -78,7 +112,7 @@ const App: React.FC = () => {
                  <select
                    value={filterStatus}
                    onChange={(e) => setFilterStatus(e.target.value as JobStatus | 'ALL')}
-                   className="pl-10 block w-full rounded-lg border-gray-300 bg-white border shadow-sm focus:border-brand-500 focus:ring-brand-500 py-2 text-sm appearance-none"
+                   className="pl-10 block w-full rounded-lg border-gray-300 bg-gray-50 border shadow-sm focus:border-brand-500 focus:ring-brand-500 py-2 text-sm appearance-none"
                  >
                    <option value="ALL">All Statuses</option>
                    {Object.values(JobStatus).map((status) => (
@@ -87,14 +121,6 @@ const App: React.FC = () => {
                  </select>
                </div>
              </div>
-             
-             <button
-              onClick={() => setView('intake')}
-              className="w-full sm:w-auto flex items-center justify-center px-4 py-2.5 bg-brand-600 text-white rounded-lg shadow-md hover:bg-brand-700 transition-colors font-medium whitespace-nowrap"
-             >
-               <Plus size={18} className="mr-2" />
-               New Booking
-             </button>
           </div>
 
           {/* Job List */}
@@ -102,9 +128,9 @@ const App: React.FC = () => {
             <div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed">
               <h3 className="text-gray-500 font-medium">No jobs found</h3>
               <p className="text-gray-400 text-sm mt-1">
-                {searchTerm || filterStatus !== 'ALL' 
-                  ? "Try adjusting your search or filters." 
-                  : "Start by adding a new service booking."}
+                {currentUser.role === UserRole.MECHANIC 
+                    ? "You have no assigned jobs." 
+                    : "Try adjusting your search or filters."}
               </p>
             </div>
           ) : (
@@ -113,7 +139,9 @@ const App: React.FC = () => {
                 <JobCard 
                   key={job.id} 
                   job={job} 
+                  currentUserRole={currentUser.role}
                   onStatusChange={handleStatusChange}
+                  onAssignMechanic={handleAssignMechanic}
                 />
               ))}
             </div>

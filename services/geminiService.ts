@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { GeminiAnalysisResult } from "../types";
+import { GeminiAnalysisResult, MachineDetails } from "../types";
 
 // Helper to convert file to base64
 export const fileToGenerativePart = (file: File): Promise<string> => {
@@ -16,7 +16,7 @@ export const fileToGenerativePart = (file: File): Promise<string> => {
   });
 };
 
-export const analyzeMachineImage = async (base64Image: string): Promise<GeminiAnalysisResult> => {
+export const analyzeMachineImage = async (base64Images: string[]): Promise<GeminiAnalysisResult> => {
   try {
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
@@ -31,18 +31,21 @@ export const analyzeMachineImage = async (base64Image: string): Promise<GeminiAn
 
     const ai = new GoogleGenAI({ apiKey });
 
+    // Construct image parts for all provided photos
+    const imageParts = base64Images.map(img => ({
+        inlineData: {
+            mimeType: "image/jpeg",
+            data: img
+        }
+    }));
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: {
         parts: [
+          ...imageParts,
           {
-            inlineData: {
-              mimeType: "image/jpeg", // Assuming JPEG for simplicity from canvas/input
-              data: base64Image
-            }
-          },
-          {
-            text: "Analyze this image of garden machinery. Identify the machine type (e.g., Lawnmower, Chainsaw, Leaf Blower), the likely manufacturer/make, and a brief summary of its visual condition (dirt, rust, damage)."
+            text: "Analyze these images of garden machinery. Identify the machine type (e.g., Lawnmower, Chainsaw, Leaf Blower), the likely manufacturer/make, and a brief summary of its visual condition (dirt, rust, damage)."
           }
         ]
       },
@@ -73,5 +76,62 @@ export const analyzeMachineImage = async (base64Image: string): Promise<GeminiAn
         type: "Unknown Machine",
         observedCondition: "AI Analysis failed."
     };
+  }
+};
+
+export const generateRepairPlan = async (machine: MachineDetails, issues: string): Promise<string> => {
+  try {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) return "AI Service Unavailable for Repair Plan.";
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const prompt = `
+      Act as an expert garden machinery mechanic.
+      Machine: ${machine.make} ${machine.model} (${machine.type}).
+      Reported Issues: "${issues}".
+      
+      Provide a concise, step-by-step technical repair plan/process to diagnose and fix these issues. 
+      Format as a numbered list. Keep it practical and safe.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+
+    return response.text || "Could not generate repair plan.";
+
+  } catch (error) {
+    console.error("Repair plan generation failed:", error);
+    return "Failed to generate repair plan due to an error.";
+  }
+};
+
+export const lookupAddressFromPostcode = async (postcode: string): Promise<string> => {
+  try {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) return "";
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `What is the primary street address or area associated with the UK postcode ${postcode}? Return ONLY the address (Street, City). Do not include the postcode in the output.`,
+      config: {
+        tools: [{ googleMaps: {} }],
+      }
+    });
+
+    // Clean up potential conversational filler from the model
+    let address = response.text || "";
+    // Remove simplistic prefixes if they appear
+    address = address.replace(/^The address is[:\s]*/i, "").trim();
+    
+    return address;
+
+  } catch (error) {
+    console.error("Address lookup failed:", error);
+    return "";
   }
 };
