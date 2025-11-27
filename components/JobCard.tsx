@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { JobRecord, JobStatus, UserRole } from '../types';
-import { Calendar, User, FileText, AlertCircle, ChevronDown, ChevronUp, Building2, ClipboardList, HardHat } from 'lucide-react';
+import { Calendar, User, FileText, AlertCircle, ChevronDown, ChevronUp, Building2, ClipboardList, HardHat, History } from 'lucide-react';
 import { getMechanics } from '../services/userService';
 
 interface JobCardProps {
@@ -12,6 +13,7 @@ interface JobCardProps {
 
 const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange, onAssignMechanic }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   const statusColors = {
     [JobStatus.INTAKE]: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -27,6 +29,12 @@ const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange,
   // Permissions
   const canAssign = currentUserRole === UserRole.MANAGER;
   const canChangeStatus = currentUserRole === UserRole.MANAGER || currentUserRole === UserRole.MECHANIC;
+
+  const formatDate = (timestamp: number) => {
+      return new Date(timestamp).toLocaleString('en-GB', {
+          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
@@ -52,7 +60,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange,
         {/* Content Section */}
         <div className="p-4 flex-grow flex flex-col justify-between">
           <div>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-1 gap-2">
               <h3 className="font-bold text-gray-900 text-lg">
                 {job.machine.make} {job.machine.model}
               </h3>
@@ -72,6 +80,15 @@ const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange,
                 </select>
                 <ChevronDown size={12} className="absolute right-2 pointer-events-none opacity-70" /> 
               </div>
+            </div>
+
+            {/* Service Type Badges */}
+            <div className="flex flex-wrap gap-1 mb-3">
+                {job.service.serviceTypes?.map(type => (
+                    <span key={type} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200">
+                        {type}
+                    </span>
+                ))}
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4 text-sm text-gray-600 mb-3">
@@ -124,12 +141,12 @@ const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange,
               <div className="border-t border-gray-100 pt-2">
                 <button 
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center w-full text-xs font-medium text-gray-500 hover:text-brand-600 transition-colors focus:outline-none"
+                  className="flex items-center w-full text-xs font-medium text-gray-500 hover:text-brand-600 transition-colors focus:outline-none py-1"
                 >
-                  <span className="flex-grow text-left">
-                    {isExpanded ? 'Hide' : 'Show'} Details & Repair Plan
+                  <span className="flex-grow text-left flex items-center">
+                    {isExpanded ? <ChevronUp size={14} className="mr-1" /> : <ChevronDown size={14} className="mr-1" />}
+                    Details & Repair Plan
                   </span>
-                  {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
                 
                 {isExpanded && (
@@ -163,6 +180,44 @@ const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange,
                 )}
               </div>
             )}
+
+            {/* Job History Section */}
+            <div className="border-t border-gray-100 pt-2">
+                 <button 
+                  onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                  className="flex items-center w-full text-xs font-medium text-gray-500 hover:text-brand-600 transition-colors focus:outline-none py-1"
+                >
+                  <span className="flex-grow text-left flex items-center">
+                     <History size={14} className="mr-1.5" />
+                     {isHistoryExpanded ? 'Hide History' : 'View History'}
+                  </span>
+                  {isHistoryExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+
+                {isHistoryExpanded && (
+                    <div className="mt-2 pl-2 border-l-2 border-gray-200 ml-1 space-y-3 animate-in slide-in-from-top-1 fade-in duration-200">
+                        {job.history && job.history.length > 0 ? (
+                            job.history.slice().reverse().map((entry, idx) => (
+                                <div key={idx} className="relative pl-3">
+                                    <div className="absolute -left-[19px] top-1.5 w-2 h-2 rounded-full bg-gray-300 ring-4 ring-white"></div>
+                                    <div className="text-[10px] text-gray-400 font-mono mb-0.5">
+                                        {formatDate(entry.timestamp)}
+                                    </div>
+                                    <div className="text-xs font-medium text-gray-800">
+                                        {entry.action}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500">
+                                        by <span className="font-semibold">{entry.userName}</span>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="pl-3 text-xs text-gray-400 italic">No history available</div>
+                        )}
+                    </div>
+                )}
+            </div>
+
           </div>
         </div>
       </div>

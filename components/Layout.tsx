@@ -57,7 +57,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser }) 
       </main>
 
       <footer className="bg-gray-800 text-gray-400 py-6 text-center text-sm">
-        <p>&copy; {new Date().getFullYear()} HardenGear Repairs. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} HardenGear. All rights reserved.</p>
       </footer>
     </div>
   );

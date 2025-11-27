@@ -45,7 +45,10 @@ export const analyzeMachineImage = async (base64Images: string[]): Promise<Gemin
         parts: [
           ...imageParts,
           {
-            text: "Analyze these images of garden machinery. Identify the machine type (e.g., Lawnmower, Chainsaw, Leaf Blower), the likely manufacturer/make, and a brief summary of its visual condition (dirt, rust, damage)."
+            text: `Analyze these images of garden machinery. 
+            1. Identify the machine type (e.g., Lawnmower, Chainsaw, Leaf Blower) and the likely manufacturer/make.
+            2. Perform OCR (Optical Character Recognition) on any visible labels, nameplates, or stickers to extract the specific MODEL NUMBER and SERIAL NUMBER.
+            3. Provide a brief summary of its visual condition (dirt, rust, damage).`
           }
         ]
       },
@@ -55,6 +58,8 @@ export const analyzeMachineImage = async (base64Images: string[]): Promise<Gemin
           type: Type.OBJECT,
           properties: {
             make: { type: Type.STRING, description: "The brand or manufacturer name if visible, else 'Unknown'" },
+            model: { type: Type.STRING, description: "The specific model number extracted from text/labels if visible." },
+            serialNumber: { type: Type.STRING, description: "The serial number extracted from text/labels if visible." },
             type: { type: Type.STRING, description: "The type of machine" },
             observedCondition: { type: Type.STRING, description: "Brief visual assessment of condition" }
           },

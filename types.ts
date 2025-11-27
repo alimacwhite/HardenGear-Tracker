@@ -1,3 +1,4 @@
+
 export enum JobStatus {
   INTAKE = 'Intake',
   IN_PROGRESS = 'In Progress',
@@ -44,6 +45,14 @@ export interface ServiceRequest {
   customerRequirements: string;
   bookingDate: string;
   suggestedRepairPlan?: string;
+  serviceTypes: string[]; // ['Service', 'Repair', 'Estimate first']
+}
+
+export interface JobHistoryEntry {
+  timestamp: number;
+  action: string;
+  userId: string;
+  userName: string;
 }
 
 export interface JobRecord {
@@ -54,11 +63,14 @@ export interface JobRecord {
   service: ServiceRequest;
   status: JobStatus;
   assignedMechanic?: string; // ID or Name of mechanic
+  history: JobHistoryEntry[];
   createdAt: number;
 }
 
 export interface GeminiAnalysisResult {
   make: string;
+  model?: string;
+  serialNumber?: string;
   type: string;
   observedCondition: string;
 }

@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Check, ChevronRight, ChevronLeft, Loader2, Search, Building2, User, Hash, MapPin, Wand2, Bot, Layers, Pencil, X, Sparkles } from 'lucide-react';
+import { Camera, Check, ChevronRight, ChevronLeft, Loader2, Search, Building2, User, Hash, MapPin, Wand2, Bot, Layers, Pencil, X, Sparkles, ScanText } from 'lucide-react';
 import { JobRecord, JobStatus, CustomerDetails } from '../types';
 import { generateJobId } from '../utils/idGenerator';
 import { analyzeMachineImage, fileToGenerativePart, generateRepairPlan, lookupAddressFromPostcode } from '../services/geminiService';
@@ -18,6 +19,8 @@ const MACHINE_TYPES = [
   "Pressure Washer", "Generator", "Scarifier", "Compact Tractor", 
   "Pole Saw", "Brush Cutter", "Robot Mower", "Tiller", "Aerator", "Log Splitter"
 ];
+
+const SERVICE_TYPE_OPTIONS = ['Service', 'Repair', 'Estimate first'];
 
 // Helper component to highlight matching text
 const HighlightedText = ({ text, highlight }: { text: string; highlight: string }) => {
@@ -74,7 +77,8 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
     knownIssues: '',
     customerRequirements: '',
     bookingDate: new Date().toISOString().split('T')[0],
-    suggestedRepairPlan: ''
+    suggestedRepairPlan: '',
+    serviceTypes: [] as string[]
   });
 
   // UI State
@@ -91,7 +95,25 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
   const [showResults, setShowResults] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const exampleRequirements = "Full service, sharpen blades, replace spark plug";
+
+  // Dynamic example text generator based on selected service types
+  const getDynamicExampleText = () => {
+    const types = serviceDetails.serviceTypes;
+    const parts: string[] = [];
+
+    if (types.includes('Service')) {
+      parts.push("Full service check, oil change, spark plug replacement, air filter clean, and blade sharpening");
+    }
+    if (types.includes('Repair')) {
+      parts.push("Investigate and repair reported faults");
+    }
+    if (types.includes('Estimate first')) {
+      parts.push("Provide cost estimate for approval prior to commencing work");
+    }
+
+    if (parts.length === 0) return "General maintenance check";
+    return parts.join(". ") + ".";
+  };
 
   // Live Search Effect
   useEffect(() => {
@@ -140,7 +162,8 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
       knownIssues: '',
       customerRequirements: '',
       bookingDate: new Date().toISOString().split('T')[0],
-      suggestedRepairPlan: ''
+      suggestedRepairPlan: '',
+      serviceTypes: []
     });
     setIsAddressLocked(false);
     setCustomerQuery('');
@@ -148,13 +171,44 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
     setShowResults(false);
   };
 
+  const executeAnalysis = async (imagesToAnalyze: string[]) => {
+    setIsAnalyzing(true);
+    try {
+        const analysis = await analyzeMachineImage(imagesToAnalyze);
+        setMachineDetails(prev => ({
+             ...prev,
+             make: analysis.make,
+             type: analysis.type,
+             model: analysis.model || prev.model,
+             serialNumber: analysis.serialNumber || prev.serialNumber,
+             conditionNotes: analysis.observedCondition
+        }));
+    } catch (e) {
+        console.error("Analysis failed", e);
+        alert("Failed to analyze images. Please enter details manually.");
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
+
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       try {
         const base64 = await fileToGenerativePart(file);
-        // Add photo to state
-        setPhotos(prev => [...prev, base64]);
+        
+        // Add new photo to local list for logic
+        const newPhotos = [...photos, base64];
+        setPhotos(newPhotos);
+
+        // Clear input to allow re-selecting same file if needed
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+        // If we now have 2 photos, automatically trigger analysis
+        if (newPhotos.length === 2) {
+            await executeAnalysis(newPhotos);
+        }
+
       } catch (error) {
         console.error("Error processing photo", error);
         alert("Failed to process image.");
@@ -162,27 +216,10 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
     }
   };
 
-  const handleAnalyzePhotos = async () => {
-    if (photos.length === 0) return;
-    setIsAnalyzing(true);
-    try {
-        const analysis = await analyzeMachineImage(photos);
-        setMachineDetails(prev => ({
-             ...prev,
-             make: analysis.make,
-             type: analysis.type,
-             conditionNotes: analysis.observedCondition
-        }));
-    } catch (e) {
-        console.error("Analysis failed", e);
-        alert("Failed to analyze images. Please try entering details manually.");
-    } finally {
-        setIsAnalyzing(false);
-    }
-  };
-
   const handleRemovePhoto = (indexToRemove: number) => {
     setPhotos(prev => prev.filter((_, index) => index !== indexToRemove));
+    // If we remove a photo and break the "2 photo" state, we might want to clear machine details?
+    // For now, let's keep the details to avoid annoyance, but the user must add another photo to proceed.
   };
 
   const handleAccountNumberBlur = async () => {
@@ -251,7 +288,22 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
       setIsAddressLocked(!!customer.address);
   };
 
+  const handleServiceTypeToggle = (type: string) => {
+    setServiceDetails(prev => {
+        const exists = prev.serviceTypes.includes(type);
+        if (exists) {
+            return { ...prev, serviceTypes: prev.serviceTypes.filter(t => t !== type) };
+        } else {
+            return { ...prev, serviceTypes: [...prev.serviceTypes, type] };
+        }
+    });
+  };
+
   const handleNext = () => {
+    if (activeStep === 0 && photos.length < 2) {
+        alert("Please add exactly 2 photos before proceeding.");
+        return;
+    }
     if (activeStep < STEPS.length - 1) setActiveStep(prev => prev + 1);
   };
 
@@ -260,6 +312,11 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
   };
 
   const handleSubmit = async () => {
+    if (serviceDetails.serviceTypes.length === 0) {
+        alert("Please select at least one Job Type (Service, Repair, or Estimate first).");
+        return;
+    }
+
     setIsSubmitting(true);
     try {
         // 1. Ensure customer is saved to "DB"
@@ -289,6 +346,7 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
               suggestedRepairPlan: finalRepairPlan
           },
           status: JobStatus.INTAKE,
+          history: [], // Initialize history
           createdAt: Date.now()
         };
 
@@ -354,72 +412,102 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
         {activeStep === 0 && (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold text-gray-900">Capture Machine Photos</h3>
-              <p className="text-sm text-gray-500">Take 1 or 2 clear photos. Then identify the machine.</p>
+              <h3 className="text-lg font-semibold text-gray-900">Required Photos</h3>
+              <p className="text-sm text-gray-500">Please provide 2 photos to enable AI identification & OCR.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {photos.map((p, i) => (
-                <div key={i} className="aspect-square relative rounded-lg overflow-hidden border border-gray-200 group">
-                   <img src={`data:image/jpeg;base64,${p}`} className="w-full h-full object-cover" alt="Captured" />
-                   <button
-                     onClick={() => handleRemovePhoto(i)}
-                     className="absolute top-2 right-2 bg-black/60 hover:bg-red-600 text-white p-1.5 rounded-full backdrop-blur-sm transition-colors shadow-sm"
-                     title="Remove photo"
-                   >
-                     <X size={14} />
-                   </button>
-                </div>
-              ))}
               
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isAnalyzing}
-                className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-500 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 transition-all disabled:opacity-50"
-              >
-                 <Camera size={32} className="mb-2" />
-                 <span className="text-xs font-medium">Add Photo</span>
-              </button>
+              {/* Slot 1: General Machine View */}
+              <div className="flex flex-col gap-2">
+                 <label className="text-xs font-medium text-gray-600">1. Machine Overview</label>
+                 {photos[0] ? (
+                    <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200 group shadow-sm">
+                       <img src={`data:image/jpeg;base64,${photos[0]}`} className="w-full h-full object-cover" alt="Machine Overview" />
+                       <button
+                         onClick={() => handleRemovePhoto(0)}
+                         className="absolute top-2 right-2 bg-black/60 hover:bg-red-600 text-white p-1.5 rounded-full backdrop-blur-sm transition-colors shadow-sm"
+                         title="Remove photo"
+                       >
+                         <div title="Remove photo">
+                             <X size={14} />
+                         </div>
+                       </button>
+                    </div>
+                 ) : (
+                    <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isAnalyzing}
+                        className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-500 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 transition-all bg-gray-50"
+                    >
+                        <Camera size={24} className="mb-2" />
+                        <span className="text-xs font-medium text-center px-2">Capture Machine</span>
+                    </button>
+                 )}
+              </div>
+
+              {/* Slot 2: Model Plate / Labels */}
+              <div className="flex flex-col gap-2">
+                 <label className="text-xs font-medium text-gray-600">2. Nameplate / Label</label>
+                 {photos[1] ? (
+                    <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200 group shadow-sm">
+                       <img src={`data:image/jpeg;base64,${photos[1]}`} className="w-full h-full object-cover" alt="Nameplate" />
+                       <button
+                         onClick={() => handleRemovePhoto(1)}
+                         className="absolute top-2 right-2 bg-black/60 hover:bg-red-600 text-white p-1.5 rounded-full backdrop-blur-sm transition-colors shadow-sm"
+                         title="Remove photo"
+                       >
+                         <div title="Remove photo">
+                             <X size={14} />
+                         </div>
+                       </button>
+                    </div>
+                 ) : (
+                    <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isAnalyzing || photos.length < 1}
+                        className={`aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all 
+                            ${photos.length < 1 
+                                ? 'border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed' 
+                                : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 cursor-pointer'
+                            }`}
+                    >
+                        <ScanText size={24} className="mb-2" />
+                        <span className="text-xs font-medium text-center px-2">Capture Details</span>
+                    </button>
+                 )}
+              </div>
+              
+              {/* Hidden File Input */}
               <input 
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden" 
                 accept="image/*" 
-                capture="environment" // Forces rear camera on mobile
+                capture="environment" 
                 onChange={handlePhotoCapture}
               />
             </div>
 
-            {/* AI Action Button */}
-            {photos.length > 0 && (
-                <div className="mt-4">
-                    <button
-                        onClick={handleAnalyzePhotos}
-                        disabled={isAnalyzing}
-                        className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-md flex items-center justify-center font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        {isAnalyzing ? (
-                            <>
-                                <Loader2 className="animate-spin mr-2" />
-                                Analyzing Photos...
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles className="mr-2" size={18} />
-                                Identify Machine
-                            </>
-                        )}
-                    </button>
-                    {machineDetails.make && !isAnalyzing && (
-                        <div className="mt-3 bg-green-50 text-green-800 p-3 rounded-md text-sm border border-green-200 flex items-start">
-                             <Check size={16} className="mr-2 mt-0.5 shrink-0" />
-                             <div>
-                                 <strong>Identified:</strong> {machineDetails.make} {machineDetails.type}.
-                                 <br/>
-                                 <span className="text-xs opacity-80">Proceed to next step to verify.</span>
-                             </div>
-                        </div>
-                    )}
+            {/* AI Status Area */}
+            {isAnalyzing && (
+                 <div className="mt-4 p-4 bg-brand-50 rounded-lg border border-brand-100 flex items-center justify-center text-brand-700 animate-pulse">
+                     <Loader2 className="animate-spin mr-3" />
+                     <span className="text-sm font-medium">Analyzing images & Reading labels (OCR)...</span>
+                 </div>
+            )}
+
+            {!isAnalyzing && machineDetails.make && (
+                <div className="mt-4 bg-green-50 text-green-800 p-3 rounded-md text-sm border border-green-200">
+                     <div className="flex items-start mb-2">
+                        <Check size={16} className="mr-2 mt-0.5 shrink-0 text-green-600" />
+                        <span className="font-bold">Analysis Complete</span>
+                     </div>
+                     <div className="pl-6 space-y-1 text-xs">
+                        <p><strong>Make:</strong> {machineDetails.make}</p>
+                        <p><strong>Model:</strong> {machineDetails.model || "Not visible"}</p>
+                        <p><strong>Serial:</strong> {machineDetails.serialNumber || "Not visible"}</p>
+                     </div>
                 </div>
             )}
           </div>
@@ -473,24 +561,38 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
                 </div>
                 <div>
                 <label className="block text-sm font-medium text-gray-700">Model</label>
-                <input 
-                    type="text" 
-                    value={machineDetails.model}
-                    onChange={(e) => setMachineDetails({...machineDetails, model: e.target.value})}
-                    placeholder="e.g. HRX537"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border"
-                />
+                <div className="relative">
+                    <input 
+                        type="text" 
+                        value={machineDetails.model}
+                        onChange={(e) => setMachineDetails({...machineDetails, model: e.target.value})}
+                        placeholder="e.g. HRX537"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border pr-8"
+                    />
+                    {machineDetails.model && (
+                        <div className="absolute right-2 top-4 text-green-600" title="Extracted via OCR">
+                            <ScanText size={14} />
+                        </div>
+                    )}
+                </div>
                 </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Serial Number</label>
-              <input 
-                type="text" 
-                value={machineDetails.serialNumber}
-                onChange={(e) => setMachineDetails({...machineDetails, serialNumber: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border"
-              />
+               <div className="relative">
+                <input 
+                    type="text" 
+                    value={machineDetails.serialNumber}
+                    onChange={(e) => setMachineDetails({...machineDetails, serialNumber: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border pr-8"
+                />
+                {machineDetails.serialNumber && (
+                    <div className="absolute right-2 top-4 text-green-600" title="Extracted via OCR">
+                        <ScanText size={14} />
+                    </div>
+                )}
+               </div>
             </div>
 
             <div>
@@ -713,26 +815,43 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
              />
            </div>
 
-            <div className="grid grid-cols-3 gap-4">
-               <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <div className="col-span-1">
+                    <label className="block text-sm font-medium text-gray-700">Postcode</label>
+                    <div className="relative">
+                        <input 
+                            type="text" 
+                            value={customerDetails.postcode}
+                            onChange={(e) => setCustomerDetails({...customerDetails, postcode: e.target.value})}
+                            onBlur={handlePostcodeBlur}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border"
+                            placeholder="e.g. HD1 2AB"
+                        />
+                         {isResolvingAddress && (
+                            <div className="absolute right-2 top-3">
+                                <Loader2 size={16} className="animate-spin text-brand-500" />
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">Enter postcode to find address</p>
+               </div>
+               
+               <div className="col-span-1 sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 flex justify-between items-center">
-                        <span className="flex items-center">
-                            Address
-                            {isResolvingAddress && <Loader2 size={12} className="ml-2 animate-spin text-brand-500" />}
-                        </span>
+                        Address
                         {isAddressLocked && (
                             <button 
                                 type="button" 
                                 onClick={() => setIsAddressLocked(false)}
                                 className="text-xs text-brand-600 hover:text-brand-700 flex items-center font-normal"
                             >
-                                <Pencil size={12} className="mr-1" /> Edit Address
+                                <Pencil size={12} className="mr-1" /> Edit
                             </button>
                         )}
                     </label>
                     
                     {isAddressLocked ? (
-                        <div className="mt-1 w-full rounded-md border border-gray-200 bg-gray-50 p-2 text-sm text-gray-800 min-h-[58px] flex items-center relative group">
+                        <div className="mt-1 w-full rounded-md border border-gray-200 bg-gray-50 p-2 text-sm text-gray-800 min-h-[42px] flex items-center relative group">
                              {customerDetails.address}
                         </div>
                     ) : (
@@ -742,7 +861,7 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
                                 value={customerDetails.address}
                                 onChange={(e) => setCustomerDetails({...customerDetails, address: e.target.value})}
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border"
-                                placeholder="Street address..."
+                                placeholder="Address will populate here..."
                             />
                             {customerDetails.address && (
                                 <button
@@ -756,17 +875,6 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
                             )}
                         </div>
                     )}
-               </div>
-               <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700">Postcode</label>
-                    <input 
-                        type="text" 
-                        value={customerDetails.postcode}
-                        onChange={(e) => setCustomerDetails({...customerDetails, postcode: e.target.value})}
-                        onBlur={handlePostcodeBlur}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border h-[62px]"
-                        placeholder="e.g. HD1 2AB"
-                    />
                </div>
             </div>
 
@@ -835,6 +943,24 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
             <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Request</h3>
             
+            {/* Job Type Checkboxes */}
+            <div className="bg-brand-50 p-3 rounded-lg border border-brand-100">
+                <label className="block text-sm font-bold text-gray-800 mb-2">Job Type (Select at least one)</label>
+                <div className="flex flex-wrap gap-4">
+                    {SERVICE_TYPE_OPTIONS.map(option => (
+                        <label key={option} className="flex items-center space-x-2 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={serviceDetails.serviceTypes.includes(option)}
+                                onChange={() => handleServiceTypeToggle(option)}
+                                className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                            />
+                            <span className="text-sm text-gray-700">{option}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Booking Date</label>
               <input 
@@ -862,7 +988,7 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
                  <label className="block text-sm font-medium text-gray-700">Customer Service Requirements</label>
                  <button 
                     type="button"
-                    onClick={() => setServiceDetails({...serviceDetails, customerRequirements: exampleRequirements})}
+                    onClick={() => setServiceDetails({...serviceDetails, customerRequirements: getDynamicExampleText()})}
                     className="text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 px-2 py-0.5 rounded border border-brand-200 transition-colors"
                  >
                     Use Example
@@ -872,7 +998,7 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
                  rows={3}
                 value={serviceDetails.customerRequirements}
                 onChange={(e) => setServiceDetails({...serviceDetails, customerRequirements: e.target.value})}
-                placeholder={`e.g. ${exampleRequirements}...`}
+                placeholder={`e.g. ${getDynamicExampleText()}`}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border"
               />
             </div>
@@ -883,16 +1009,23 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
 
       {/* Footer / Actions */}
       <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-between">
-        <button
-          onClick={handleBack}
-          disabled={activeStep === 0 || isSubmitting}
-          className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeStep === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          <ChevronLeft size={18} className="mr-1" />
-          Back
-        </button>
+        {activeStep === 0 ? (
+          <button
+            onClick={onCancel}
+            className="flex items-center px-4 py-2 rounded-lg font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+          >
+            Cancel
+          </button>
+        ) : (
+          <button
+            onClick={handleBack}
+            disabled={isSubmitting}
+            className="flex items-center px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+          >
+            <ChevronLeft size={18} className="mr-1" />
+            Back
+          </button>
+        )}
 
         {activeStep === STEPS.length - 1 ? (
           <button
@@ -915,7 +1048,8 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
         ) : (
           <button
             onClick={handleNext}
-            className="flex items-center px-6 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 shadow-md transition-transform active:scale-95 font-medium"
+            disabled={activeStep === 0 && (photos.length < 2 || isAnalyzing)}
+            className="flex items-center px-6 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 shadow-md transition-transform active:scale-95 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
             <ChevronRight size={18} className="ml-1" />

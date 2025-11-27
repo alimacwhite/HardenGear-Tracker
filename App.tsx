@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import JobCard from './components/JobCard';
 import IntakeForm from './components/IntakeForm';
-import { JobRecord, JobStatus, UserRole, User } from './types';
+import { JobRecord, JobStatus, UserRole, User, JobHistoryEntry } from './types';
 import { Plus, Search, Filter } from 'lucide-react';
 import { MOCK_USERS } from './services/userService';
 
@@ -31,20 +32,56 @@ const App: React.FC = () => {
   }, [jobs]);
 
   const handleSaveJob = (newJob: JobRecord) => {
-    setJobs(prev => [newJob, ...prev]);
+    // Add initial history entry for creation
+    const jobWithHistory: JobRecord = {
+        ...newJob,
+        history: [{
+            timestamp: Date.now(),
+            action: 'Job Created',
+            userId: currentUser.id,
+            userName: currentUser.name
+        }]
+    };
+    setJobs(prev => [jobWithHistory, ...prev]);
     setView('dashboard');
   };
 
   const handleStatusChange = (id: string, newStatus: JobStatus) => {
-    setJobs(prevJobs => prevJobs.map(job => 
-      job.id === id ? { ...job, status: newStatus } : job
-    ));
+    setJobs(prevJobs => prevJobs.map(job => {
+      if (job.id === id) {
+          const newHistoryItem: JobHistoryEntry = {
+              timestamp: Date.now(),
+              action: `Status updated to ${newStatus}`,
+              userId: currentUser.id,
+              userName: currentUser.name
+          };
+          return { 
+              ...job, 
+              status: newStatus,
+              history: [...(job.history || []), newHistoryItem]
+          };
+      }
+      return job;
+    }));
   };
 
   const handleAssignMechanic = (jobId: string, mechanicName: string) => {
-    setJobs(prevJobs => prevJobs.map(job => 
-        job.id === jobId ? { ...job, assignedMechanic: mechanicName } : job
-    ));
+    setJobs(prevJobs => prevJobs.map(job => {
+        if (job.id === jobId) {
+            const newHistoryItem: JobHistoryEntry = {
+                timestamp: Date.now(),
+                action: mechanicName ? `Assigned to mechanic: ${mechanicName}` : `Mechanic unassigned`,
+                userId: currentUser.id,
+                userName: currentUser.name
+            };
+            return { 
+                ...job, 
+                assignedMechanic: mechanicName,
+                history: [...(job.history || []), newHistoryItem]
+            };
+        }
+        return job;
+    }));
   };
 
   const filteredJobs = jobs.filter(job => {
