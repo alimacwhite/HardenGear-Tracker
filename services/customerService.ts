@@ -1,3 +1,4 @@
+
 import { CustomerDetails } from '../types';
 
 // Mock database simulating records in a PostgreSQL DB
@@ -101,4 +102,10 @@ export const saveMockCustomer = async (customer: CustomerDetails): Promise<void>
           id: `DB-${Date.now()}` // Generate a mock internal DB ID
       });
   }
+};
+
+export const getAllCustomers = async (): Promise<CustomerDetails[]> => {
+  // Simulate fetching all clients
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return [...MOCK_DB];
 };

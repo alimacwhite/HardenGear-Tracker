@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Wrench, UserCircle } from 'lucide-react';
+import { Wrench, UserCircle, LayoutDashboard, Users, Settings } from 'lucide-react';
 import { UserRole, User } from '../types';
 import { MOCK_USERS } from '../services/userService';
 
@@ -7,9 +8,18 @@ interface LayoutProps {
   children: React.ReactNode;
   currentUser: User;
   onSwitchUser: (user: User) => void;
+  currentView: string;
+  onNavigate: (view: string) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser }) => {
+const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser, currentView, onNavigate }) => {
+  
+  const navItems = [
+    { id: 'dashboard', label: 'Workshop Dashboard', icon: LayoutDashboard },
+    { id: 'clients', label: 'Client Details', icon: Users },
+    { id: 'control_panel', label: 'Control Panel', icon: Settings },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Mobile-first Header */}
@@ -50,6 +60,35 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser }) 
           </div>
         </div>
       </header>
+
+      {/* Navigation Bar */}
+      <div className="bg-white border-b border-gray-200 sticky top-[72px] sm:top-[76px] z-40 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4">
+            <nav className="flex space-x-6 sm:space-x-8 overflow-x-auto" aria-label="Tabs">
+                {navItems.map((item) => {
+                     const Icon = item.icon;
+                     const isActive = currentView === item.id || (currentView === 'intake' && item.id === 'dashboard');
+                     
+                     return (
+                        <button
+                          key={item.id}
+                          onClick={() => onNavigate(item.id)}
+                          className={`
+                            group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200
+                            ${isActive 
+                               ? 'border-brand-500 text-brand-600'
+                               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }
+                          `}
+                        >
+                           <Icon size={16} className={`mr-2 ${isActive ? 'text-brand-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
+                           {item.label}
+                        </button>
+                     )
+                })}
+            </nav>
+        </div>
+      </div>
 
       {/* Main Content Area */}
       <main className="flex-grow p-4 md:p-6 max-w-5xl mx-auto w-full">

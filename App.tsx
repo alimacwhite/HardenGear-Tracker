@@ -3,13 +3,17 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import JobCard from './components/JobCard';
 import IntakeForm from './components/IntakeForm';
+import ClientList from './components/ClientList';
+import ControlPanel from './components/ControlPanel';
 import { JobRecord, JobStatus, UserRole, User, JobHistoryEntry } from './types';
 import { Plus, Search, Filter } from 'lucide-react';
 import { MOCK_USERS } from './services/userService';
 
+type ViewState = 'dashboard' | 'intake' | 'clients' | 'control_panel';
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]); 
-  const [view, setView] = useState<'dashboard' | 'intake'>('dashboard');
+  const [view, setView] = useState<ViewState>('dashboard');
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<JobStatus | 'ALL'>('ALL');
@@ -108,8 +112,13 @@ const App: React.FC = () => {
   const canCreateBooking = [UserRole.COUNTER, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(currentUser.role);
 
   return (
-    <Layout currentUser={currentUser} onSwitchUser={setCurrentUser}>
-      {view === 'dashboard' ? (
+    <Layout 
+        currentUser={currentUser} 
+        onSwitchUser={setCurrentUser}
+        currentView={view}
+        onNavigate={(v) => setView(v as ViewState)}
+    >
+      {view === 'dashboard' && (
         <div className="space-y-6">
           {/* Welcome Message */}
           <div className="flex justify-between items-center">
@@ -185,7 +194,9 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
-      ) : (
+      )}
+      
+      {view === 'intake' && (
         <div className="max-w-2xl mx-auto h-[calc(100vh-140px)]">
             <IntakeForm 
               onSave={handleSaveJob} 
@@ -193,6 +204,10 @@ const App: React.FC = () => {
             />
         </div>
       )}
+
+      {view === 'clients' && <ClientList />}
+      
+      {view === 'control_panel' && <ControlPanel currentUser={currentUser} />}
     </Layout>
   );
 };
