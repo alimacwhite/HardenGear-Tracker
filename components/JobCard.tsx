@@ -17,9 +17,12 @@ const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange,
 
   const statusColors = {
     [JobStatus.INTAKE]: 'bg-blue-100 text-blue-800 border-blue-200',
+    [JobStatus.DIAGNOSIS]: 'bg-purple-100 text-purple-800 border-purple-200',
     [JobStatus.IN_PROGRESS]: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     [JobStatus.WAITING_FOR_PARTS]: 'bg-orange-100 text-orange-800 border-orange-200',
+    [JobStatus.QUALITY_CHECK]: 'bg-teal-100 text-teal-800 border-teal-200',
     [JobStatus.COMPLETED]: 'bg-green-100 text-green-800 border-green-200',
+    [JobStatus.READY_FOR_PICKUP]: 'bg-indigo-100 text-indigo-800 border-indigo-200',
   };
 
   const hasAdditionalNotes = job.machine.conditionNotes || job.service.customerRequirements || job.service.suggestedRepairPlan;
@@ -27,8 +30,8 @@ const JobCard: React.FC<JobCardProps> = ({ job, currentUserRole, onStatusChange,
   const mechanics = getMechanics();
 
   // Permissions
-  const canAssign = currentUserRole === UserRole.MANAGER;
-  const canChangeStatus = currentUserRole === UserRole.MANAGER || currentUserRole === UserRole.MECHANIC;
+  const canAssign = [UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(currentUserRole);
+  const canChangeStatus = [UserRole.MANAGER, UserRole.MECHANIC, UserRole.ADMIN, UserRole.OWNER].includes(currentUserRole);
 
   const formatDate = (timestamp: number) => {
       return new Date(timestamp).toLocaleString('en-GB', {

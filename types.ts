@@ -1,17 +1,22 @@
 
 export enum JobStatus {
   INTAKE = 'Intake',
+  DIAGNOSIS = 'Diagnosis',
   IN_PROGRESS = 'In Progress',
   WAITING_FOR_PARTS = 'Waiting for Parts',
+  QUALITY_CHECK = 'Quality Check',
   COMPLETED = 'Completed',
+  READY_FOR_PICKUP = 'Ready for Pickup',
 }
 
 export type AccountType = 'Personal' | 'Business';
 
 export enum UserRole {
-  FRONT_DESK = 'Front Desk',
+  COUNTER = 'Counter',
   MANAGER = 'Workshop Manager',
   MECHANIC = 'Mechanic',
+  ADMIN = 'Admin',
+  OWNER = 'Owner',
 }
 
 export interface User {

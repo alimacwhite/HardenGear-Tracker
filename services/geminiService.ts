@@ -5,13 +5,26 @@ import { GeminiAnalysisResult, MachineDetails } from "../types";
 export const fileToGenerativePart = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => {
+    
+    // Use onload for successful reads to ensure result is available
+    reader.onload = () => {
       const base64String = reader.result as string;
+      if (!base64String) {
+        reject(new Error("File read result was empty"));
+        return;
+      }
       // Remove data url prefix (e.g. "data:image/jpeg;base64,")
-      const base64Data = base64String.split(',')[1];
+      // Check if comma exists to avoid potential issues, although readAsDataURL usually provides it.
+      const parts = base64String.split(',');
+      const base64Data = parts.length > 1 ? parts[1] : base64String;
       resolve(base64Data);
     };
-    reader.onerror = reject;
+
+    // Use onerror for failures
+    reader.onerror = (error) => {
+        reject(reader.error || error);
+    };
+
     reader.readAsDataURL(file);
   });
 };

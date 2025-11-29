@@ -8,7 +8,7 @@ import { Plus, Search, Filter } from 'lucide-react';
 import { MOCK_USERS } from './services/userService';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]); // Default to Front Desk
+  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]); 
   const [view, setView] = useState<'dashboard' | 'intake'>('dashboard');
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,14 +97,15 @@ const App: React.FC = () => {
     // Role-based filtering
     let matchesRole = true;
     if (currentUser.role === UserRole.MECHANIC) {
-        // Mechanics primarily see jobs assigned to them, or jobs that are unassigned if they want to grab one (optional business logic)
-        // For this app, strict assignment view:
+        // Mechanics primarily see jobs assigned to them
         matchesRole = job.assignedMechanic === currentUser.name;
     } 
-    // Managers and Front Desk see all jobs.
+    // Counter, Managers, Admin, and Owner see all jobs.
 
     return matchesSearch && matchesStatus && matchesRole;
   });
+
+  const canCreateBooking = [UserRole.COUNTER, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(currentUser.role);
 
   return (
     <Layout currentUser={currentUser} onSwitchUser={setCurrentUser}>
@@ -115,7 +116,7 @@ const App: React.FC = () => {
              <h2 className="text-lg font-bold text-gray-800">
                 {currentUser.role === UserRole.MECHANIC ? 'My Assigned Jobs' : 'Workshop Dashboard'}
              </h2>
-             {currentUser.role === UserRole.FRONT_DESK && (
+             {canCreateBooking && (
                  <button
                   onClick={() => setView('intake')}
                   className="flex items-center justify-center px-4 py-2 bg-brand-600 text-white rounded-lg shadow-md hover:bg-brand-700 transition-colors font-medium text-sm"
