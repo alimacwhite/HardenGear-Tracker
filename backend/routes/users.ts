@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { runWithRLS } from '../db/transactionWrapper';
 
@@ -13,7 +13,7 @@ const router = express.Router();
  * 2. If Requester is Platform Admin -> Can delete any user (via policy override).
  * 3. If Requester is Business Staff -> DB Policy likely prevents DELETE entirely (depending on exact CRUD grants).
  */
-router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/:id', authMiddleware, async (req: ExpressRequest, res: ExpressResponse) => {
   const targetUserId = req.params.id;
   const authReq = req as AuthRequest;
   const currentUser = authReq.user!;

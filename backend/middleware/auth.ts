@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '../../types'; // Shared types
 
 // Extend Express Request to include our User payload
-export interface AuthRequest extends Request {
+export interface AuthRequest extends ExpressRequest {
   user?: {
     userId: string;
     organisationId?: string;
@@ -11,7 +11,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 

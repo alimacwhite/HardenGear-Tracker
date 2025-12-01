@@ -13,9 +13,9 @@
     "react-dom": "^19.2.0",
     "@google/genai": "^1.30.0",
     "lucide-react": "^0.555.0",
+    "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
-    "express": "^5.1.0"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
