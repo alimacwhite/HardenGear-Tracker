@@ -3,13 +3,15 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import JobCard from './components/JobCard';
 import IntakeForm from './components/IntakeForm';
-import ClientList from './components/ClientList';
+import ClientDashboard from './components/ClientDashboard';
 import ControlPanel from './components/ControlPanel';
+import NewMachineSale from './components/NewMachineSale';
+import PartsSale from './components/PartsSale';
 import { JobRecord, JobStatus, UserRole, User, JobHistoryEntry } from './types';
 import { Plus, Search, Filter } from 'lucide-react';
 import { MOCK_USERS } from './services/userService';
 
-type ViewState = 'dashboard' | 'intake' | 'clients' | 'control_panel';
+type ViewState = 'dashboard' | 'intake' | 'clients' | 'control_panel' | 'sale' | 'parts_sale';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]); 
@@ -205,9 +207,13 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {view === 'clients' && <ClientList />}
+      {view === 'clients' && <ClientDashboard currentUser={currentUser} />}
       
       {view === 'control_panel' && <ControlPanel currentUser={currentUser} />}
+
+      {view === 'sale' && <NewMachineSale />}
+
+      {view === 'parts_sale' && <PartsSale />}
     </Layout>
   );
 };

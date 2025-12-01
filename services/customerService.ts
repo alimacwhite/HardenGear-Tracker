@@ -104,6 +104,15 @@ export const saveMockCustomer = async (customer: CustomerDetails): Promise<void>
   }
 };
 
+export const updateCustomer = async (customer: CustomerDetails): Promise<void> => {
+  // Simulate UPDATE in PostgreSQL
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const index = MOCK_DB.findIndex(c => c.id === customer.id);
+  if (index !== -1) {
+    MOCK_DB[index] = customer;
+  }
+};
+
 export const getAllCustomers = async (): Promise<CustomerDetails[]> => {
   // Simulate fetching all clients
   await new Promise(resolve => setTimeout(resolve, 300));

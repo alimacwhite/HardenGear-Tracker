@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Wrench, UserCircle, LayoutDashboard, Users, Settings } from 'lucide-react';
+import { Wrench, UserCircle, LayoutDashboard, Users, Settings, ShoppingBag, Package } from 'lucide-react';
 import { UserRole, User } from '../types';
 import { MOCK_USERS } from '../services/userService';
 
@@ -14,9 +14,15 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser, currentView, onNavigate }) => {
   
+  // Define permission for Client Dashboard
+  const showClientDashboard = [UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(currentUser.role);
+
   const navItems = [
     { id: 'dashboard', label: 'Workshop Dashboard', icon: LayoutDashboard },
-    { id: 'clients', label: 'Client Details', icon: Users },
+    { id: 'sale', label: 'New Machine Sale', icon: ShoppingBag },
+    { id: 'parts_sale', label: 'Parts Sale', icon: Package },
+    // Only show Client Dashboard if user has permission
+    ...(showClientDashboard ? [{ id: 'clients', label: 'Client Dashboard', icon: Users }] : []),
     { id: 'control_panel', label: 'Control Panel', icon: Settings },
   ];
 
