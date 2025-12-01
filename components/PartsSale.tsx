@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, User, Building2, MapPin, Check, Package, Trash2, Plus, CreditCard } from 'lucide-react';
+import { Search, Loader2, User, Building2, MapPin, Check, Package, Trash2, Plus, CreditCard, Barcode } from 'lucide-react';
 import { CustomerDetails } from '../types';
 import { searchCustomers } from '../services/customerService';
+import { getProductByCode } from '../services/productService';
 
 interface PartItem {
     id: string;
@@ -28,6 +29,9 @@ const PartsSale: React.FC = () => {
       quantity: 1,
       unitPrice: 0
   });
+
+  // Lookup State
+  const [isLookingUpPart, setIsLookingUpPart] = useState(false);
 
   // Debounced Search
   useEffect(() => {
@@ -60,6 +64,27 @@ const PartsSale: React.FC = () => {
       setSelectedCustomer(null);
       setIsNewCustomer(false);
       setCustomerQuery('');
+  };
+
+  const handlePartNumberBlur = async () => {
+    if (!newItem.partNumber || newItem.partNumber.trim().length < 3) return;
+
+    setIsLookingUpPart(true);
+    try {
+        const product = await getProductByCode(newItem.partNumber);
+        if (product) {
+            setNewItem(prev => ({
+                ...prev,
+                // Construct a description from the product details
+                description: `${product.make} ${product.model} ${product.type}`,
+                unitPrice: product.price
+            }));
+        }
+    } catch (error) {
+        console.error("Part lookup failed", error);
+    } finally {
+        setIsLookingUpPart(false);
+    }
   };
 
   const handleAddItem = () => {
@@ -230,13 +255,19 @@ const PartsSale: React.FC = () => {
                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 grid grid-cols-12 gap-3 items-end">
                        <div className="col-span-12 sm:col-span-3">
                            <label className="block text-xs font-medium text-gray-700 mb-1">Part Number</label>
-                           <input 
-                               type="text"
-                               value={newItem.partNumber}
-                               onChange={e => setNewItem({...newItem, partNumber: e.target.value})}
-                               className="block w-full rounded border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm p-2 border"
-                               placeholder="123-ABC"
-                           />
+                           <div className="relative">
+                               <input 
+                                   type="text"
+                                   value={newItem.partNumber}
+                                   onChange={e => setNewItem({...newItem, partNumber: e.target.value})}
+                                   onBlur={handlePartNumberBlur}
+                                   className="block w-full rounded border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm p-2 border pr-8"
+                                   placeholder="e.g. OIL-10W30"
+                               />
+                               <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                                   {isLookingUpPart ? <Loader2 size={14} className="animate-spin text-brand-500" /> : <Barcode size={14} className="text-gray-400" />}
+                               </div>
+                           </div>
                        </div>
                        <div className="col-span-12 sm:col-span-4">
                            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
@@ -245,7 +276,7 @@ const PartsSale: React.FC = () => {
                                value={newItem.description}
                                onChange={e => setNewItem({...newItem, description: e.target.value})}
                                className="block w-full rounded border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm p-2 border"
-                               placeholder="Oil Filter"
+                               placeholder="Description"
                            />
                        </div>
                        <div className="col-span-4 sm:col-span-2">
