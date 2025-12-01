@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ClientList from './ClientList';
-import { Users, FileText, PieChart, Plus, Building2 } from 'lucide-react';
+import { Users, FileText, PieChart, Plus, Building2, UserPlus } from 'lucide-react';
 import { User } from '../types';
 
 interface ClientDashboardProps {
@@ -14,10 +14,16 @@ const ClientDashboard: React.FC<ClientDashboardProps> = ({ currentUser }) => {
        {/* Dashboard Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Contact Dashboard</h2>
-        <button className="flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg shadow-sm hover:bg-brand-700 transition-colors font-medium text-sm">
-            <Plus size={16} className="mr-2" />
-            New Organisation
-        </button>
+        <div className="flex gap-3">
+            <button className="flex items-center px-4 py-2 bg-white text-brand-600 border border-brand-200 rounded-lg shadow-sm hover:bg-brand-50 transition-colors font-medium text-sm">
+                <UserPlus size={16} className="mr-2" />
+                New Client
+            </button>
+            <button className="flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg shadow-sm hover:bg-brand-700 transition-colors font-medium text-sm">
+                <Plus size={16} className="mr-2" />
+                New Organisation
+            </button>
+        </div>
       </div>
 
       {/* Dashboard Metrics / Quick Stats Placeholder */}

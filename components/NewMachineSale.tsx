@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, User, Building2, MapPin, Check, ShoppingCart, Tag, CreditCard } from 'lucide-react';
+import { Search, Loader2, User, Building2, MapPin, Check, ShoppingCart, Tag, CreditCard, Barcode } from 'lucide-react';
 import { CustomerDetails } from '../types';
 import { searchCustomers } from '../services/customerService';
+import { getProductByCode } from '../services/productService';
 
 const NewMachineSale: React.FC = () => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -12,8 +13,13 @@ const NewMachineSale: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetails | null>(null);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   
+  // Product Lookup State
+  const [isLookingUpProduct, setIsLookingUpProduct] = useState(false);
+  const [productLookupSuccess, setProductLookupSuccess] = useState(false);
+
   // Sale Form State
   const [saleDetails, setSaleDetails] = useState({
+      productCode: '',
       make: '',
       model: '',
       type: '',
@@ -56,13 +62,39 @@ const NewMachineSale: React.FC = () => {
       setCustomerQuery('');
   };
 
+  const handleProductCodeBlur = async () => {
+      if (!saleDetails.productCode || saleDetails.productCode.trim().length < 3) return;
+
+      setIsLookingUpProduct(true);
+      setProductLookupSuccess(false);
+      try {
+          const product = await getProductByCode(saleDetails.productCode);
+          if (product) {
+              setSaleDetails(prev => ({
+                  ...prev,
+                  make: product.make,
+                  model: product.model,
+                  type: product.type,
+                  price: product.price.toFixed(2),
+                  warrantyYears: product.warrantyYears
+              }));
+              setProductLookupSuccess(true);
+          }
+      } catch (error) {
+          console.error("Product lookup failed", error);
+      } finally {
+          setIsLookingUpProduct(false);
+      }
+  };
+
   const handleSubmitSale = () => {
       // Logic to save sale would go here
       alert("Sale processed successfully! Invoice #INV-" + Math.floor(Math.random() * 10000));
       // Reset
       setStep(1);
       handleClearCustomer();
-      setSaleDetails({ make: '', model: '', type: '', serialNumber: '', price: '', warrantyYears: '2', notes: '' });
+      setSaleDetails({ productCode: '', make: '', model: '', type: '', serialNumber: '', price: '', warrantyYears: '2', notes: '' });
+      setProductLookupSuccess(false);
   };
 
   return (
@@ -200,6 +232,30 @@ const NewMachineSale: React.FC = () => {
            {step === 2 && (
                <div className="p-6 space-y-6">
                    <h3 className="text-lg font-medium text-gray-800">Equipment Details</h3>
+
+                   {/* Product Code Lookup */}
+                   <div className="bg-brand-50 p-4 rounded-lg border border-brand-100">
+                       <label className="block text-sm font-bold text-brand-800 mb-1">Product Code Lookup</label>
+                       <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Barcode size={18} className="text-brand-500" />
+                            </div>
+                            <input 
+                                type="text"
+                                value={saleDetails.productCode}
+                                onChange={e => setSaleDetails({...saleDetails, productCode: e.target.value})}
+                                onBlur={handleProductCodeBlur}
+                                onFocus={() => setProductLookupSuccess(false)}
+                                placeholder="Enter Code (e.g. JD-X350) to auto-fill"
+                                className={`pl-10 block w-full rounded-md shadow-sm p-2 border ${productLookupSuccess ? 'border-green-500 focus:border-green-500 focus:ring-green-500' : 'border-brand-200 focus:border-brand-500 focus:ring-brand-500'}`}
+                            />
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                {isLookingUpProduct && <Loader2 size={18} className="text-brand-500 animate-spin" />}
+                                {productLookupSuccess && <Check size={18} className="text-green-600" />}
+                            </div>
+                       </div>
+                       <p className="text-[10px] text-brand-600 mt-1">Leaving this field will verify the code against the database.</p>
+                   </div>
                    
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <div>
@@ -308,6 +364,10 @@ const NewMachineSale: React.FC = () => {
                         <div className="flex justify-between">
                             <span className="text-gray-500">Machine</span>
                             <span className="font-medium text-gray-900">{saleDetails.make} {saleDetails.model}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">Product Code</span>
+                            <span className="font-mono text-gray-900">{saleDetails.productCode || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-500">Serial No.</span>

@@ -79,3 +79,12 @@ export interface GeminiAnalysisResult {
   type: string;
   observedCondition: string;
 }
+
+export interface MachineProduct {
+  code: string;
+  make: string;
+  model: string;
+  type: string;
+  price: number;
+  warrantyYears: string;
+}
