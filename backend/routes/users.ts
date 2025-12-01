@@ -14,7 +14,7 @@ const router = express.Router();
  * 3. If Requester is Business Staff -> DB Policy likely prevents DELETE entirely (depending on exact CRUD grants).
  */
 router.delete('/:id', authMiddleware, async (req: ExpressRequest, res: ExpressResponse) => {
-  const targetUserId = req.params.id;
+  const targetUserId = (req as any).params.id;
   const authReq = req as AuthRequest;
   const currentUser = authReq.user!;
 
@@ -39,16 +39,16 @@ router.delete('/:id', authMiddleware, async (req: ExpressRequest, res: ExpressRe
       return result.rows[0];
     });
 
-    res.status(200).json({ message: 'User deleted successfully' });
+    (res as any).status(200).json({ message: 'User deleted successfully' });
 
   } catch (err: any) {
     // In production, log the error but return a generic message to prevent ID enumeration
     console.error(`Failed to delete user ${targetUserId}:`, err);
     
     if (err.message === 'User not found or access denied') {
-        res.status(404).json({ error: 'User not found' });
+        (res as any).status(404).json({ error: 'User not found' });
     } else {
-        res.status(500).json({ error: 'Internal server error' });
+        (res as any).status(500).json({ error: 'Internal server error' });
     }
   }
 });

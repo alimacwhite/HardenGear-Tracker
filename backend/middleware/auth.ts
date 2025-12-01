@@ -12,11 +12,11 @@ export interface AuthRequest extends ExpressRequest {
 }
 
 export const authMiddleware = (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
+  const authHeader = (req as any).headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    return (res as any).status(401).json({ error: 'Access token required' });
   }
 
   try {
@@ -34,6 +34,6 @@ export const authMiddleware = (req: ExpressRequest, res: ExpressResponse, next: 
 
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Invalid or expired token' });
+    return (res as any).status(403).json({ error: 'Invalid or expired token' });
   }
 };

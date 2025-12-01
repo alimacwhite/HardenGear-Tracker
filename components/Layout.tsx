@@ -22,7 +22,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser, cu
     { id: 'sale', label: 'New Machine Sale', icon: ShoppingBag },
     { id: 'parts_sale', label: 'Parts Sale', icon: Package },
     // Only show Client Dashboard if user has permission
-    ...(showClientDashboard ? [{ id: 'clients', label: 'Client Dashboard', icon: Users }] : []),
+    ...(showClientDashboard ? [{ id: 'clients', label: 'Contact Dashboard', icon: Users }] : []),
     { id: 'control_panel', label: 'Control Panel', icon: Settings },
   ];
 
