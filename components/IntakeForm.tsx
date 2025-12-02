@@ -110,7 +110,6 @@ const IntakeForm: React.FC<IntakeFormProps> = ({ onSave, onCancel }) => {
     if (types.includes('Estimate first')) {
       parts.push("Provide cost estimate for approval prior to commencing work");
     }
-
     if (parts.length === 0) return "General maintenance check";
     return parts.join(". ") + ".";
   };

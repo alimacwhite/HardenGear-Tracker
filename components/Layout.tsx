@@ -1,27 +1,27 @@
 
 import React from 'react';
-import { Wrench, UserCircle, LayoutDashboard, Users, Settings, ShoppingBag, Package } from 'lucide-react';
-import { UserRole, User } from '../types';
-import { MOCK_USERS } from '../services/userService';
+import { Wrench, LayoutDashboard, Users, Settings, ShoppingBag, Package, LogOut, ChevronDown } from 'lucide-react';
+import { UserRole } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentUser: User;
-  onSwitchUser: (user: User) => void;
   currentView: string;
   onNavigate: (view: string) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser, currentView, onNavigate }) => {
+const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate }) => {
+  const { user, logout } = useAuth();
   
+  if (!user) return null;
+
   // Define permission for Client Dashboard
-  const showClientDashboard = [UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(currentUser.role);
+  const showClientDashboard = [UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(user.role);
 
   const navItems = [
     { id: 'dashboard', label: 'Workshop Dashboard', icon: LayoutDashboard },
     { id: 'sale', label: 'New Machine Sale', icon: ShoppingBag },
     { id: 'parts_sale', label: 'Parts Sale', icon: Package },
-    // Only show Client Dashboard if user has permission
     ...(showClientDashboard ? [{ id: 'clients', label: 'Contact Dashboard', icon: Users }] : []),
     { id: 'control_panel', label: 'Control Panel', icon: Settings },
   ];
@@ -30,45 +30,44 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onSwitchUser, cu
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Mobile-first Header */}
       <header className="bg-brand-700 text-white shadow-lg sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <div className="bg-white/20 p-2 rounded-full">
-                <Wrench size={24} className="text-white" />
+                <Wrench size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">HardenGear</h1>
-              <p className="text-xs text-brand-200 uppercase tracking-wider font-semibold">Service Tracker</p>
+              <h1 className="text-lg font-bold tracking-tight">HardenGear</h1>
+              <p className="text-[10px] text-brand-200 uppercase tracking-wider font-semibold leading-none">Service Tracker</p>
             </div>
           </div>
 
-          {/* User Role Switcher for Demo */}
-          <div className="flex items-center bg-brand-800 rounded-lg p-1 pr-3">
-             <div className="bg-brand-600 p-1.5 rounded mr-2">
-                <UserCircle size={16} />
+          {/* User Profile */}
+          <div className="flex items-center gap-4">
+             <div className="flex items-center gap-3 bg-brand-800/50 pl-3 pr-4 py-1.5 rounded-full border border-brand-600/30">
+                 <img 
+                    src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name}&background=random`} 
+                    alt={user.name} 
+                    className="w-8 h-8 rounded-full border-2 border-brand-400"
+                 />
+                 <div className="flex flex-col">
+                     <span className="text-xs font-bold text-white leading-tight">{user.name}</span>
+                     <span className="text-[10px] text-brand-300 font-medium uppercase">{user.role}</span>
+                 </div>
              </div>
-             <div className="flex flex-col">
-                <label className="text-[10px] text-brand-300 uppercase font-bold">Current User</label>
-                <select 
-                    value={currentUser.id}
-                    onChange={(e) => {
-                        const user = MOCK_USERS.find(u => u.id === e.target.value);
-                        if (user) onSwitchUser(user);
-                    }}
-                    className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer text-white border-none p-0 appearance-none"
-                >
-                    {MOCK_USERS.map(user => (
-                        <option key={user.id} value={user.id} className="text-gray-900">
-                            {user.name} ({user.role})
-                        </option>
-                    ))}
-                </select>
-             </div>
+             
+             <button 
+                onClick={logout}
+                className="p-2 text-brand-200 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                title="Sign Out"
+             >
+                <LogOut size={18} />
+             </button>
           </div>
         </div>
       </header>
 
       {/* Navigation Bar */}
-      <div className="bg-white border-b border-gray-200 sticky top-[72px] sm:top-[76px] z-40 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-[70px] sm:top-[66px] z-40 shadow-sm">
         <div className="max-w-5xl mx-auto px-4">
             <nav className="flex space-x-6 sm:space-x-8 overflow-x-auto" aria-label="Tabs">
                 {navItems.map((item) => {

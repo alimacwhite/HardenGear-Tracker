@@ -1,8 +1,9 @@
+
 import { Pool, PoolClient } from 'pg';
 import { UserRole } from '../../types';
 
 // Initialize Pool with the RESTRICTED 'app_user' credentials
-const pool = new Pool({
+export const pool = new Pool({
   user: process.env.DB_USER || 'app_user', 
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,

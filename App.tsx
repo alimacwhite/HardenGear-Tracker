@@ -1,26 +1,28 @@
 
 import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
+import LoginPage from './components/LoginPage';
 import JobCard from './components/JobCard';
 import IntakeForm from './components/IntakeForm';
 import ClientDashboard from './components/ClientDashboard';
 import ControlPanel from './components/ControlPanel';
 import NewMachineSale from './components/NewMachineSale';
 import PartsSale from './components/PartsSale';
-import { JobRecord, JobStatus, UserRole, User, JobHistoryEntry } from './types';
-import { Plus, Search, Filter } from 'lucide-react';
-import { MOCK_USERS } from './services/userService';
+import { JobRecord, JobStatus, UserRole, JobHistoryEntry } from './types';
+import { Plus, Search, Filter, Loader2 } from 'lucide-react';
 
 type ViewState = 'dashboard' | 'intake' | 'clients' | 'control_panel' | 'sale' | 'parts_sale';
 
-const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]); 
+// Inner component to handle routing once Auth is provided
+const AuthenticatedApp: React.FC = () => {
+  const { user, isLoading, isAuthenticated } = useAuth();
   const [view, setView] = useState<ViewState>('dashboard');
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<JobStatus | 'ALL'>('ALL');
 
-  // Load jobs from local storage on mount
+  // Load jobs from local storage
   useEffect(() => {
     const savedJobs = localStorage.getItem('garden_gear_jobs');
     if (savedJobs) {
@@ -32,20 +34,30 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Save jobs whenever they change
   useEffect(() => {
     localStorage.setItem('garden_gear_jobs', JSON.stringify(jobs));
   }, [jobs]);
 
+  if (isLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <Loader2 size={48} className="text-brand-600 animate-spin" />
+          </div>
+      );
+  }
+
+  if (!isAuthenticated || !user) {
+      return <LoginPage />;
+  }
+
   const handleSaveJob = (newJob: JobRecord) => {
-    // Add initial history entry for creation
     const jobWithHistory: JobRecord = {
         ...newJob,
         history: [{
             timestamp: Date.now(),
             action: 'Job Created',
-            userId: currentUser.id,
-            userName: currentUser.name
+            userId: user.id,
+            userName: user.name
         }]
     };
     setJobs(prev => [jobWithHistory, ...prev]);
@@ -58,8 +70,8 @@ const App: React.FC = () => {
           const newHistoryItem: JobHistoryEntry = {
               timestamp: Date.now(),
               action: `Status updated to ${newStatus}`,
-              userId: currentUser.id,
-              userName: currentUser.name
+              userId: user.id,
+              userName: user.name
           };
           return { 
               ...job, 
@@ -77,8 +89,8 @@ const App: React.FC = () => {
             const newHistoryItem: JobHistoryEntry = {
                 timestamp: Date.now(),
                 action: mechanicName ? `Assigned to mechanic: ${mechanicName}` : `Mechanic unassigned`,
-                userId: currentUser.id,
-                userName: currentUser.name
+                userId: user.id,
+                userName: user.name
             };
             return { 
                 ...job, 
@@ -100,23 +112,18 @@ const App: React.FC = () => {
     
     const matchesStatus = filterStatus === 'ALL' || job.status === filterStatus;
     
-    // Role-based filtering
     let matchesRole = true;
-    if (currentUser.role === UserRole.MECHANIC) {
-        // Mechanics primarily see jobs assigned to them
-        matchesRole = job.assignedMechanic === currentUser.name;
+    if (user.role === UserRole.MECHANIC) {
+        matchesRole = job.assignedMechanic === user.name;
     } 
-    // Counter, Managers, Admin, and Owner see all jobs.
 
     return matchesSearch && matchesStatus && matchesRole;
   });
 
-  const canCreateBooking = [UserRole.COUNTER, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(currentUser.role);
+  const canCreateBooking = [UserRole.COUNTER, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER].includes(user.role);
 
   return (
     <Layout 
-        currentUser={currentUser} 
-        onSwitchUser={setCurrentUser}
         currentView={view}
         onNavigate={(v) => setView(v as ViewState)}
     >
@@ -125,7 +132,7 @@ const App: React.FC = () => {
           {/* Welcome Message */}
           <div className="flex justify-between items-center">
              <h2 className="text-lg font-bold text-gray-800">
-                {currentUser.role === UserRole.MECHANIC ? 'My Assigned Jobs' : 'Workshop Dashboard'}
+                {user.role === UserRole.MECHANIC ? 'My Assigned Jobs' : 'Workshop Dashboard'}
              </h2>
              {canCreateBooking && (
                  <button
@@ -177,7 +184,7 @@ const App: React.FC = () => {
             <div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed">
               <h3 className="text-gray-500 font-medium">No jobs found</h3>
               <p className="text-gray-400 text-sm mt-1">
-                {currentUser.role === UserRole.MECHANIC 
+                {user.role === UserRole.MECHANIC 
                     ? "You have no assigned jobs." 
                     : "Try adjusting your search or filters."}
               </p>
@@ -188,7 +195,7 @@ const App: React.FC = () => {
                 <JobCard 
                   key={job.id} 
                   job={job} 
-                  currentUserRole={currentUser.role}
+                  currentUserRole={user.role}
                   onStatusChange={handleStatusChange}
                   onAssignMechanic={handleAssignMechanic}
                 />
@@ -207,15 +214,24 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {view === 'clients' && <ClientDashboard currentUser={currentUser} />}
+      {view === 'clients' && <ClientDashboard currentUser={user} />}
       
-      {view === 'control_panel' && <ControlPanel currentUser={currentUser} />}
+      {view === 'control_panel' && <ControlPanel currentUser={user} />}
 
       {view === 'sale' && <NewMachineSale />}
 
       {view === 'parts_sale' && <PartsSale />}
     </Layout>
   );
+};
+
+// Main App Wrapper provides Context
+const App: React.FC = () => {
+    return (
+        <AuthProvider>
+            <AuthenticatedApp />
+        </AuthProvider>
+    );
 };
 
 export default App;
