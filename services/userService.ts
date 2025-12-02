@@ -32,7 +32,7 @@ export const MOCK_USERS: User[] = [
   },
   { 
     id: 'u5', 
-    name: 'Alice', 
+    name: 'Alice (Platform Admin)', 
     email: 'alice@harden.equipment', 
     role: UserRole.ADMIN,
     avatarUrl: 'https://ui-avatars.com/api/?name=Alice&background=DB2777&color=fff'

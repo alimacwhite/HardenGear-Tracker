@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.removeItem('auth_user');
             }
         } else {
-            // PREVIEW MODE: Automatically log in as Platform Admin
+            // PREVIEW MODE: Automatically log in as Platform Admin if no session exists
             const previewUser: User = {
                 id: 'u5',
                 name: 'Alice (Platform Admin)',
