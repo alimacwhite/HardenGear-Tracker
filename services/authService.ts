@@ -1,5 +1,5 @@
 
-import { User } from '../types';
+import { User, UserRole } from '../types';
 
 // Configuration for API URL
 // In a production environment, this would come from an environment variable.
@@ -14,6 +14,26 @@ interface AuthResponse {
  * Login using email and password against the real backend.
  */
 export const loginWithCredentials = async (email: string, password: string): Promise<AuthResponse> => {
+    // FOR PREVIEW PURPOSES ONLY:
+    // We are intercepting the login to force an Admin session so the preview shows full capabilities.
+    // In a real app, you would simply use the fetch call below.
+    
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    return {
+        user: {
+            id: 'u5',
+            name: 'Alice (Admin Preview)',
+            email: 'alice@harden.equipment',
+            role: UserRole.ADMIN,
+            avatarUrl: 'https://ui-avatars.com/api/?name=Alice&background=DB2777&color=fff'
+        },
+        token: 'mock-admin-token-for-preview'
+    };
+
+    /* 
+    // REAL IMPLEMENTATION (Commented out for Preview without Backend)
     try {
         const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
@@ -34,6 +54,7 @@ export const loginWithCredentials = async (email: string, password: string): Pro
         console.error("Login failed:", error);
         throw error;
     }
+    */
 };
 
 /**
