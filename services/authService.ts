@@ -24,7 +24,7 @@ export const loginWithCredentials = async (email: string, password: string): Pro
     return {
         user: {
             id: 'u5',
-            name: 'Alice (Admin Preview)',
+            name: 'Alice (Platform Admin)',
             email: 'alice@harden.equipment',
             role: UserRole.ADMIN,
             avatarUrl: 'https://ui-avatars.com/api/?name=Alice&background=DB2777&color=fff'

@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { loginWithCredentials, loginWithProvider, logout as authLogout, requestPasswordReset } from '../services/authService';
 
 interface AuthContextType {
@@ -32,6 +32,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.error("Failed to parse stored user", e);
                 localStorage.removeItem('auth_user');
             }
+        } else {
+            // PREVIEW MODE: Automatically log in as Platform Admin
+            const previewUser: User = {
+                id: 'u5',
+                name: 'Alice (Platform Admin)',
+                email: 'alice@harden.equipment',
+                role: UserRole.ADMIN,
+                avatarUrl: 'https://ui-avatars.com/api/?name=Alice&background=DB2777&color=fff'
+            };
+            setUser(previewUser);
+            localStorage.setItem('auth_user', JSON.stringify(previewUser));
+            localStorage.setItem('auth_token', 'preview-admin-token');
         }
         setIsLoading(false);
     };
