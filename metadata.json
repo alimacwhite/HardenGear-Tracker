@@ -1,5 +1,5 @@
 {
-  "name": "HardenGear Tracker",
+  "name": "HardenEquipment Tracker",
   "description": "A mobile-first web application for tracking garden machinery repairs. Features AI-powered machine identification from photos, unique job ID generation, and comprehensive service management.",
   "requestFramePermissions": [
     "camera"

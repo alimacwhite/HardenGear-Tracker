@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Wrench, LayoutDashboard, Users, Settings, ShoppingBag, Package, LogOut, ChevronDown } from 'lucide-react';
 import { UserRole } from '../types';
@@ -36,7 +35,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate }) =>
                 <Wrench size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight">HardenGear</h1>
+              <h1 className="text-lg font-bold tracking-tight">HardenEquipment</h1>
               <p className="text-[10px] text-brand-200 uppercase tracking-wider font-semibold leading-none">Service Tracker</p>
             </div>
           </div>
@@ -101,7 +100,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate }) =>
       </main>
 
       <footer className="bg-gray-800 text-gray-400 py-6 text-center text-sm">
-        <p>&copy; {new Date().getFullYear()} HardenGear. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} HardenEquipment. All rights reserved.</p>
       </footer>
     </div>
   );

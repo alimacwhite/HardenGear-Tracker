@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Loader2, Lock, Mail, Wrench, ArrowRight, CheckCircle } from 'lucide-react';
@@ -41,7 +40,7 @@ const LoginPage: React.FC = () => {
                 <div className="bg-white/20 p-2.5 rounded-full">
                     <Wrench size={32} className="text-white" />
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight">HardenGear</h1>
+                <h1 className="text-3xl font-bold tracking-tight">HardenEquipment</h1>
               </div>
               <h2 className="text-4xl font-extrabold leading-tight mb-6">
                   Manage your workshop <br/> with precision.
